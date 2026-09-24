@@ -22,4 +22,8 @@ export interface SearchResponse {
   query: string
   location?: string
   cached: boolean
+  page?: number
+  page_size?: number
+  has_more?: boolean
+  sources?: string[]
 }

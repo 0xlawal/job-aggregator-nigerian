@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI(
     title="Nigerian Job Aggregator API",
     description="Aggregates Nigerian job boards + AI-powered matching",
-    version="1.0.0",
+    version="2.0.0",
 )
 
 app.add_middleware(
@@ -36,7 +36,7 @@ async def root():
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "timestamp": datetime.now().isoformat()}
+    return {"status": "ok", "timestamp": datetime.now().isoformat(), "version": "2.0.0"}
 
 
 if __name__ == "__main__":

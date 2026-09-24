@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronDown, MapPin, Search, X } from 'lucide-react'
+import { MapPin, Search, X } from 'lucide-react'
 
 interface SearchBarProps {
   onSearch: (query: string, location: string) => void
@@ -27,28 +27,28 @@ export default function SearchBar({ onSearch, isLoading, initialQuery = '', init
     <form onSubmit={handleSubmit} className="w-full">
       <div className={`search-shell ${compact ? 'search-shell-compact' : ''}`}>
         <div className="flex min-w-0 flex-1 items-center gap-3 px-4">
-          <Search className="h-5 w-5 shrink-0 text-slate-400" />
+          <Search className="h-[18px] w-[18px] shrink-0 text-[#777a74]" />
           <input
             aria-label="Search jobs"
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Job title, skill, or company"
-            className="h-14 w-full bg-transparent text-[15px] font-medium text-slate-950 outline-none placeholder:text-slate-400"
+            className="h-14 w-full bg-transparent text-[14px] font-semibold text-[#101315] outline-none placeholder:text-[#9b9c95]"
           />
         </div>
 
         <div className="hidden h-8 w-px bg-slate-200 md:block" />
 
         <div className="flex min-w-0 flex-1 items-center gap-3 px-4">
-          <MapPin className="h-5 w-5 shrink-0 text-slate-400" />
+          <MapPin className="h-[18px] w-[18px] shrink-0 text-[#777a74]" />
           <input
             aria-label="Job location"
             type="text"
             value={location}
             onChange={(e) => setLocation(e.target.value)}
             placeholder="Lagos, Abuja, Remote..."
-            className="h-14 w-full bg-transparent text-[15px] font-medium text-slate-950 outline-none placeholder:text-slate-400"
+            className="h-14 w-full bg-transparent text-[14px] font-semibold text-[#101315] outline-none placeholder:text-[#9b9c95]"
           />
         </div>
 
@@ -67,10 +67,7 @@ export default function SearchBar({ onSearch, isLoading, initialQuery = '', init
           {isLoading ? 'Searching...' : 'Search jobs'}
         </button>
       </div>
-      <div className="mt-2 flex items-center justify-center gap-1 text-[11px] font-medium text-slate-400">
-        <ChevronDown className="h-3 w-3" />
-        Search across Nigerian and remote job boards
-      </div>
+      <div className="mt-2 text-center text-[10px] font-semibold text-[#96978f]">Search across Nigerian and remote job boards</div>
     </form>
   )
 }

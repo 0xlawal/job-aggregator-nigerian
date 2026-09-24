@@ -1,7 +1,10 @@
 import httpx
 import logging
-from typing import List, Dict
+import hashlib
+import re
+from typing import List, Dict, Optional
 from urllib.parse import quote_plus
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -10,14 +13,23 @@ HEADERS = {
     "User-Agent": "JobAggregator/1.0 (https://github.com/0xlawal/job-aggregator-nigerian)"
 }
 
+
+def extract_posted_date(item: Dict) -> Optional[str]:
+    """Read the common date fields exposed by the different job APIs."""
+    for key in ("posted_date", "publication_date", "created_at", "date", "pubDate", "jobPosted", "postedAt"):
+        value = item.get(key)
+        if value:
+            return str(value)
+    return None
+
 async def fetch_hotnigerianjobs(query: str, location: str = "") -> List[Dict]:
     """
     Fetch jobs from HotNigerianJobs via the Parse.bot API.
     Requires an API key from https://parse.bot.
     """
     jobs = []
-    api_key = "pmx_b3c2074f12ea8cd8ce8bdb64743019f3"
-    if not api_key or api_key == "pmx_b3c2074f12ea8cd8ce8bdb64743019f3":
+    api_key = settings.HOTNIGERIANJOBS_API_KEY
+    if not api_key:
         logger.warning("HotNigerianJobs API key not configured. Skipping this source.")
         return jobs
 
@@ -42,6 +54,7 @@ async def fetch_hotnigerianjobs(query: str, location: str = "") -> List[Dict]:
                 "salary": item.get("salary"),
                 "url": item.get("url", ""),
                 "source": "HotNigerianJobs",
+                "posted_date": extract_posted_date(item),
             })
         logger.info(f"HotNigerianJobs: fetched {len(jobs)} jobs")
     except Exception as e:
@@ -62,11 +75,11 @@ async def fetch_from_arbeitnow(query: str) -> List[Dict]:
             response.raise_for_status()
             data = response.json()
 
-        query_lower = query.lower()
+        query_terms = tokenize(query)
         for item in data.get("data", []):
-            # Filter by query to find relevant jobs
-            if query_lower in item.get("title", "").lower() or \
-               query_lower in item.get("description", "").lower():
+            title = item.get("title", "")
+            description = item.get("description", "")
+            if not matches_query(query_terms, f"{title} {description}"):
                 jobs.append({
                     "id": f"arn-{item.get('slug', hash(item.get('url', '')) % 10000000)}",
                     "title": item.get("title", "No Title"),
@@ -76,6 +89,7 @@ async def fetch_from_arbeitnow(query: str) -> List[Dict]:
                     "salary": None, # Arbeitnow API doesn't provide salary
                     "url": item.get("url", ""),
                     "source": "Arbeitnow",
+                    "posted_date": extract_posted_date(item),
                 })
         logger.info(f"Arbeitnow: fetched {len(jobs)} jobs for query '{query}'")
     except Exception as e:
@@ -106,6 +120,7 @@ async def fetch_from_remotive(query: str) -> List[Dict]:
                 "salary": item.get("salary"),
                 "url": item.get("url", ""),
                 "source": "Remotive",
+                "posted_date": extract_posted_date(item),
             })
         logger.info(f"Remotive: fetched {len(jobs)} jobs")
     except Exception as e:
@@ -136,6 +151,7 @@ async def fetch_from_jobicy(query: str) -> List[Dict]:
                 "salary": None, # Jobicy API doesn't provide salary
                 "url": item.get("url", ""),
                 "source": "Jobicy",
+                "posted_date": extract_posted_date(item),
             })
         logger.info(f"Jobicy: fetched {len(jobs)} jobs")
     except Exception as e:
@@ -166,6 +182,7 @@ async def fetch_from_himalayas(query: str) -> List[Dict]:
                 "salary": item.get("salary"),
                 "url": item.get("applicationLink", ""),
                 "source": "Himalayas",
+                "posted_date": extract_posted_date(item),
             })
         logger.info(f"Himalayas: fetched {len(jobs)} jobs")
     except Exception as e:
@@ -218,14 +235,69 @@ async def scrape_all(query: str, location: str = "") -> List[Dict]:
     # ✅ Filter by location
     all_jobs = filter_by_location(all_jobs, location)
 
-    # De-duplicate
-    seen = set()
-    unique_jobs = []
-    for job in all_jobs:
-        key = (job["title"].lower(), job["company"].lower())
-        if key not in seen:
-            seen.add(key)
-            unique_jobs.append(job)
+    unique_jobs = deduplicate_jobs(all_jobs)
 
     logger.info(f"Total aggregated jobs after de-duplication: {len(unique_jobs)}")
     return unique_jobs
+
+
+def tokenize(value: str) -> List[str]:
+    return [token for token in re.findall(r"[a-z0-9+#.-]+", value.lower()) if len(token) > 1]
+
+
+def matches_query(tokens: List[str], text: str) -> bool:
+    if not tokens:
+        return True
+    normalized = re.sub(r"[^a-z0-9+#.-]+", " ", text.lower())
+    return all(token in normalized for token in tokens) or any(token in normalized for token in tokens)
+
+
+def canonical_url(url: str) -> str:
+    return re.sub(r"[?#].*$", "", (url or "").strip().lower()).rstrip("/")
+
+
+def normalized_text(value: Optional[str]) -> str:
+    return re.sub(r"\s+", " ", (value or "").strip().lower())
+
+
+def stable_id(job: Dict) -> str:
+    identity = "|".join([
+        canonical_url(job.get("url", "")),
+        normalized_text(job.get("title")),
+        normalized_text(job.get("company")),
+    ])
+    return f"job-{hashlib.sha1(identity.encode('utf-8')).hexdigest()[:16]}"
+
+
+def deduplicate_jobs(jobs: List[Dict]) -> List[Dict]:
+    """Collapse reposts across boards while retaining the richest record."""
+    unique: Dict[str, Dict] = {}
+    aliases: Dict[tuple, str] = {}
+
+    for raw in jobs:
+        job = dict(raw)
+        for field, fallback in (("title", "No Title"), ("company", "Unknown"), ("location", "Nigeria")):
+            job[field] = re.sub(r"\s+", " ", (job.get(field) or fallback)).strip()
+        job["url"] = (job.get("url") or "").strip()
+        job["id"] = stable_id(job)
+
+        url_key = canonical_url(job["url"])
+        fingerprint = (normalized_text(job["title"]), normalized_text(job["company"]))
+        key = url_key or "|".join(fingerprint)
+        existing_key = aliases.get(fingerprint) or key
+
+        if existing_key in unique:
+            existing = unique[existing_key]
+            if len(job.get("description") or "") > len(existing.get("description") or ""):
+                existing["description"] = job["description"]
+            for field in ("salary", "posted_date", "location", "url"):
+                if not existing.get(field) and job.get(field):
+                    existing[field] = job[field]
+            existing["sources"] = sorted(set(existing.get("sources", []) + [job.get("source", "Unknown")]))
+            continue
+
+        job["sources"] = [job.get("source", "Unknown")]
+        unique[key] = job
+        aliases[fingerprint] = key
+
+    return list(unique.values())

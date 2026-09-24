@@ -1,15 +1,16 @@
-import { Bookmark, Building2, ExternalLink, MapPin } from 'lucide-react'
+import { ArrowUpRight, Bookmark, Building2, MapPin } from 'lucide-react'
 import type { Job } from '../types'
 
 interface JobCardProps {
   job: Job
+  index: number
   saved: boolean
   onToggleSave: (job: Job) => void
   onView: (job: Job) => void
 }
 
 function postedLabel(date?: string) {
-  if (!date) return 'Recently posted'
+  if (!date) return 'Recently listed'
   const parsed = new Date(date)
   if (Number.isNaN(parsed.getTime())) return date
   const days = Math.max(0, Math.floor((Date.now() - parsed.getTime()) / 86400000))
@@ -19,56 +20,19 @@ function postedLabel(date?: string) {
   return parsed.toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-export default function JobCard({ job, saved, onToggleSave, onView }: JobCardProps) {
-  const remote = /remote/i.test(`${job.location} ${job.title}`)
-
+export default function JobCard({ job, index, saved, onToggleSave, onView }: JobCardProps) {
+  const remote = /remote|anywhere|worldwide/i.test(`${job.location} ${job.title}`)
   return (
-    <article className="job-card group">
-      <div className="mb-5 flex items-start justify-between gap-4">
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="company-mark">{job.company?.trim()?.charAt(0)?.toUpperCase() || 'J'}</div>
-          <div className="min-w-0">
-            <p className="truncate text-xs font-bold uppercase tracking-[0.12em] text-slate-400">{job.company}</p>
-            <p className="mt-1 text-xs font-medium text-slate-400">{job.source || 'Job board'}</p>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={() => onToggleSave(job)}
-          aria-label={saved ? 'Remove saved job' : 'Save job'}
-          className={`save-button ${saved ? 'save-button-active' : ''}`}
-        >
-          <Bookmark className="h-4 w-4" fill={saved ? 'currentColor' : 'none'} />
-        </button>
-      </div>
-
-      <button type="button" onClick={() => onView(job)} className="block w-full text-left">
-        <h3 className="line-clamp-2 text-[17px] font-bold leading-6 tracking-[-0.02em] text-slate-950 transition group-hover:text-primary">{job.title}</h3>
+    <article className="job-row" style={{ animationDelay: `${Math.min(index * 45, 300)}ms` }}>
+      <span className="job-index">{String(index + 1).padStart(2, '0')}</span>
+      <button type="button" className="job-main" onClick={() => onView(job)}>
+        <span className="job-company-line"><span className="company-mark">{job.company?.trim()?.charAt(0)?.toUpperCase() || 'J'}</span><span>{job.company || 'Unknown company'}</span>{job.source && <small>{job.source}</small>}</span>
+        <strong>{job.title}</strong>
+        <span className="job-meta"><span><MapPin className="h-3.5 w-3.5" />{job.location || 'Nigeria'}</span><span><Building2 className="h-3.5 w-3.5" />{postedLabel(job.posted_date)}</span>{remote && <b>Remote</b>}{job.salary && <b>{job.salary}</b>}</span>
       </button>
-
-      <div className="mt-4 flex flex-wrap gap-2">
-        {remote && <span className="tag tag-green">Remote</span>}
-        {job.salary && <span className="tag tag-neutral">{job.salary}</span>}
-      </div>
-
-      <div className="mt-5 space-y-2 text-sm text-slate-500">
-        <div className="flex items-center gap-2">
-          <MapPin className="h-4 w-4 shrink-0 text-slate-400" />
-          <span className="truncate">{job.location || 'Nigeria'}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Building2 className="h-4 w-4 shrink-0 text-slate-400" />
-          <span>{postedLabel(job.posted_date)}</span>
-        </div>
-      </div>
-
-      <div className="mt-6 flex items-center gap-2 border-t border-slate-100 pt-4">
-        <button type="button" onClick={() => onView(job)} className="flex-1 rounded-xl border border-slate-200 py-2.5 text-sm font-bold text-slate-800 transition hover:border-slate-300 hover:bg-slate-50">
-          Details
-        </button>
-        <a href={job.url} target="_blank" rel="noreferrer" className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-slate-950 py-2.5 text-sm font-bold text-white transition hover:bg-primary">
-          Apply <ExternalLink className="h-4 w-4" />
-        </a>
+      <div className="job-actions">
+        <button type="button" onClick={() => onToggleSave(job)} className={`icon-action ${saved ? 'icon-action-active' : ''}`} aria-label={saved ? 'Remove saved job' : 'Save job'}><Bookmark className="h-4 w-4" fill={saved ? 'currentColor' : 'none'} /></button>
+        <button type="button" onClick={() => onView(job)} className="details-action">View <ArrowUpRight className="h-4 w-4" /></button>
       </div>
     </article>
   )
