@@ -1,55 +1,75 @@
 import { useState } from 'react'
-import { Search, MapPin, Loader2 } from 'lucide-react'
+import { ChevronDown, MapPin, Search, X } from 'lucide-react'
 
 interface SearchBarProps {
   onSearch: (query: string, location: string) => void
   isLoading: boolean
+  initialQuery?: string
+  initialLocation?: string
+  compact?: boolean
 }
 
-export default function SearchBar({ onSearch, isLoading }: SearchBarProps) {
-  const [query, setQuery] = useState('')
-  const [location, setLocation] = useState('')
+export default function SearchBar({ onSearch, isLoading, initialQuery = '', initialLocation = '', compact = false }: SearchBarProps) {
+  const [query, setQuery] = useState(initialQuery)
+  const [location, setLocation] = useState(initialLocation)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     onSearch(query, location)
   }
 
+  const clear = () => {
+    setQuery('')
+    setLocation('')
+  }
+
   return (
-    <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-2 flex flex-col md:flex-row gap-2">
-        <div className="flex-1 flex items-center gap-2 px-3">
-          <Search className="h-5 w-5 text-gray-400 shrink-0" />
+    <form onSubmit={handleSubmit} className="w-full">
+      <div className={`search-shell ${compact ? 'search-shell-compact' : ''}`}>
+        <div className="flex min-w-0 flex-1 items-center gap-3 px-4">
+          <Search className="h-5 w-5 shrink-0 text-slate-400" />
           <input
-            type="text"
+            aria-label="Search jobs"
+            type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Job title, skills, or company"
-            className="w-full h-12 bg-transparent outline-none text-sm font-medium"
+            placeholder="Job title, skill, or company"
+            className="h-14 w-full bg-transparent text-[15px] font-medium text-slate-950 outline-none placeholder:text-slate-400"
           />
         </div>
 
-        <div className="hidden md:block w-px bg-gray-200 my-2" />
+        <div className="hidden h-8 w-px bg-slate-200 md:block" />
 
-        <div className="flex-1 flex items-center gap-2 px-3">
-          <MapPin className="h-5 w-5 text-gray-400 shrink-0" />
+        <div className="flex min-w-0 flex-1 items-center gap-3 px-4">
+          <MapPin className="h-5 w-5 shrink-0 text-slate-400" />
           <input
+            aria-label="Job location"
             type="text"
             value={location}
             onChange={(e) => setLocation(e.target.value)}
-            placeholder="Location (e.g. Lagos)"
-            className="w-full h-12 bg-transparent outline-none text-sm font-medium"
+            placeholder="Lagos, Abuja, Remote..."
+            className="h-14 w-full bg-transparent text-[15px] font-medium text-slate-950 outline-none placeholder:text-slate-400"
           />
         </div>
+
+        {(query || location) && (
+          <button type="button" onClick={clear} aria-label="Clear search" className="hidden rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 md:block">
+            <X className="h-4 w-4" />
+          </button>
+        )}
 
         <button
           type="submit"
           disabled={isLoading || !query.trim()}
-          className="h-12 px-8 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 transition disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="search-button"
         >
-          {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Search className="h-5 w-5" />}
-          {isLoading ? 'Searching' : 'Search'}
+          <Search className="h-4 w-4" />
+          {isLoading ? 'Searching...' : 'Search jobs'}
         </button>
+      </div>
+      <div className="mt-2 flex items-center justify-center gap-1 text-[11px] font-medium text-slate-400">
+        <ChevronDown className="h-3 w-3" />
+        Search across Nigerian and remote job boards
       </div>
     </form>
   )

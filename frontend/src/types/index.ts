@@ -10,6 +10,12 @@ export interface Job {
   posted_date?: string
 }
 
+export type JobFilters = {
+  source: string
+  workMode: 'all' | 'remote' | 'onsite'
+  postedWithin: 'all' | '24h' | '7d' | '30d'
+}
+
 export interface SearchResponse {
   jobs: Job[]
   total: number
