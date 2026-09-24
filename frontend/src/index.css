@@ -32,6 +32,11 @@ button { font: inherit; }
   .popular-row > span { @apply text-[9px] font-black uppercase tracking-[.16em]; color: #9b9b94; }
   .popular-row button { @apply flex items-center gap-0.5 text-[11px] font-bold transition; color: #545650; }
   .popular-row button:hover { color: var(--blue); transform: translateX(2px); }
+  .recent-row { @apply mt-4 flex flex-wrap items-center gap-2; }
+  .recent-row > span { @apply mr-1 text-[9px] font-black uppercase tracking-[.16em]; color: #aaa9a1; }
+  .recent-row button { @apply flex items-center gap-2 rounded-full border bg-white/40 px-3 py-1.5 text-[10px] font-bold transition; border-color: var(--line); }
+  .recent-row button:hover { @apply bg-white; border-color: #a7a9b0; }
+  .recent-row small { @apply text-[9px] font-semibold; color: #96978f; }
   .hero-panel { @apply relative min-h-[500px] overflow-hidden rounded-[28px] p-7 text-white sm:p-9 lg:min-h-[600px]; background: #111517; box-shadow: 0 30px 90px rgba(16,19,21,.18); }
   .hero-panel::before { content: ""; position: absolute; inset: 0; background: linear-gradient(145deg, transparent 25%, rgba(36,87,255,.26), transparent 62%), repeating-linear-gradient(90deg, rgba(255,255,255,.045) 0 1px, transparent 1px 52px); mask-image: linear-gradient(to bottom, black, transparent 90%); }
   .hero-panel-top { @apply relative flex justify-between text-[9px] font-black tracking-[.17em]; color: #777d7d; }
@@ -57,6 +62,9 @@ button { font: inherit; }
   .results-heading h2 span { @apply align-top text-base font-bold tracking-normal; color: #96968f; }
   .results-heading p:last-child { @apply mt-2 text-[13px]; color: var(--muted); }
   .results-actions { @apply flex gap-2; }
+  .sort-control { @apply flex items-center gap-2 rounded-full border px-3.5 py-2.5 text-[10px] font-black; border-color: var(--line); background: rgba(255,255,255,.35); }
+  .sort-control span { color: #96978f; }
+  .sort-control select { @apply bg-transparent font-black outline-none; }
   .control-button { @apply flex items-center gap-2 rounded-full border px-4 py-2.5 text-[11px] font-extrabold transition; border-color: var(--line); background: rgba(255,255,255,.35); }
   .control-button:hover, .control-button-active { border-color: #9ea4b6; background: white; }
   .filter-drawer { @apply mt-4 grid gap-4 rounded-2xl border bg-white/70 p-4 sm:grid-cols-3; border-color: var(--line); }
@@ -105,6 +113,10 @@ button { font: inherit; }
   .state-card h3 { @apply mt-4 text-xl font-black tracking-[-.03em]; }
   .state-card p { @apply mt-2 max-w-sm text-[13px] leading-6; color: var(--muted); }
   .state-card button { @apply mt-5 rounded-full bg-[var(--ink)] px-5 py-2.5 text-[11px] font-black text-white; }
+  .load-more { @apply flex flex-col items-center gap-2 py-8; }
+  .load-more button { @apply flex items-center gap-2 rounded-full border bg-white px-5 py-3 text-[11px] font-black transition; border-color: var(--line); }
+  .load-more button:hover { background: var(--ink); color: white; border-color: var(--ink); }
+  .load-more span { @apply text-[9px] font-bold uppercase tracking-[.12em]; color: #a09f98; }
 
   .site-footer { @apply flex items-center justify-between border-t px-5 py-7 sm:px-8 lg:px-10; border-color: var(--line); }
   .site-footer > div { @apply flex flex-col; }

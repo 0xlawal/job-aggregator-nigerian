@@ -79,7 +79,7 @@ async def fetch_from_arbeitnow(query: str) -> List[Dict]:
         for item in data.get("data", []):
             title = item.get("title", "")
             description = item.get("description", "")
-            if not matches_query(query_terms, f"{title} {description}"):
+            if matches_query(query_terms, f"{title} {description}"):
                 jobs.append({
                     "id": f"arn-{item.get('slug', hash(item.get('url', '')) % 10000000)}",
                     "title": item.get("title", "No Title"),

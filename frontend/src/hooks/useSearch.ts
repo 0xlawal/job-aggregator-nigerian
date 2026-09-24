@@ -7,11 +7,12 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 export function useSearch() {
   const [jobs, setJobs] = useState<Job[]>([])
   const [total, setTotal] = useState(0)
+  const [hasMore, setHasMore] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const requestId = useRef(0)
 
-  const search = async (query: string, location: string, filters?: JobFilters) => {
+  const search = async (query: string, location: string, filters?: JobFilters, sort: 'relevance' | 'newest' = 'relevance', page = 1, append = false) => {
     if (!query.trim()) return
 
     const currentRequest = ++requestId.current
@@ -25,17 +26,19 @@ export function useSearch() {
         {
           query,
           location: location || undefined,
-          page: 1,
+          page,
           page_size: 40,
           source: filters?.source !== 'all' ? filters?.source : undefined,
           work_mode: filters?.workMode || 'all',
           posted_within: filters?.postedWithin || 'all',
+          sort,
         },
         { timeout: 30000 }
       )
       if (currentRequest === requestId.current) {
-        setJobs(response.data.jobs || [])
+        setJobs((current) => append ? [...current, ...(response.data.jobs || [])] : (response.data.jobs || []))
         setTotal(response.data.total || 0)
+        setHasMore(Boolean(response.data.has_more))
       }
     } catch (err) {
       console.error('Search failed:', err)
@@ -50,11 +53,12 @@ export function useSearch() {
         )
         setJobs([])
         setTotal(0)
+        setHasMore(false)
       }
     } finally {
       setIsLoading(false)
     }
   }
 
-  return { jobs, total, isLoading, error, search }
+  return { jobs, total, hasMore, isLoading, error, search }
 }

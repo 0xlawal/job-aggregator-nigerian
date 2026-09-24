@@ -18,7 +18,7 @@ function withinDate(date: string | undefined, range: JobFilters['postedWithin'])
 }
 
 export default function App() {
-  const { jobs, total, isLoading, error, search } = useSearch()
+  const { jobs, total, hasMore, isLoading, error, search } = useSearch()
   const [searched, setSearched] = useState(false)
   const [query, setQuery] = useState('')
   const [location, setLocation] = useState('')
@@ -29,6 +29,10 @@ export default function App() {
   })
   const [savedOnly, setSavedOnly] = useState(false)
   const [selectedJob, setSelectedJob] = useState<Job | null>(null)
+  const [sort, setSort] = useState<'relevance' | 'newest'>('relevance')
+  const [recentSearches, setRecentSearches] = useState<{ query: string; location: string }[]>(() => {
+    try { return JSON.parse(localStorage.getItem('nigerian-jobs:recent') || '[]') } catch { return [] }
+  })
 
   useEffect(() => {
     localStorage.setItem('nigerian-jobs:saved', JSON.stringify(saved))
@@ -39,7 +43,10 @@ export default function App() {
     setLocation(nextLocation)
     setSearched(true)
     setSavedOnly(false)
-    search(nextQuery, nextLocation, filters)
+    const nextRecent = [{ query: nextQuery.trim(), location: nextLocation.trim() }, ...recentSearches.filter((item) => item.query.toLowerCase() !== nextQuery.trim().toLowerCase())].slice(0, 5)
+    setRecentSearches(nextRecent)
+    localStorage.setItem('nigerian-jobs:recent', JSON.stringify(nextRecent))
+    search(nextQuery, nextLocation, filters, sort)
   }
 
   const toggleSave = (job: Job) => {
@@ -61,7 +68,12 @@ export default function App() {
 
   const applyFilters = (next: JobFilters) => {
     setFilters(next)
-    if (searched && query) search(query, location, next)
+    if (searched && query) search(query, location, next, sort)
+  }
+
+  const changeSort = (nextSort: 'relevance' | 'newest') => {
+    setSort(nextSort)
+    if (query) search(query, location, filters, nextSort)
   }
 
   return (
@@ -93,6 +105,7 @@ export default function App() {
                 <span>Popular</span>
                 {POPULAR_SEARCHES.map((term) => <button key={term} type="button" onClick={() => runSearch(term, '')}>{term}<ChevronRight className="h-3 w-3" /></button>)}
               </div>
+              {recentSearches.length > 0 && <div className="recent-row"><span>Recent</span>{recentSearches.slice(0, 3).map((item) => <button key={`${item.query}:${item.location}`} type="button" onClick={() => runSearch(item.query, item.location)}>{item.query}<small>{item.location || 'Anywhere'}</small></button>)}</div>}
             </div>
 
             <div className="hero-panel" aria-hidden="true">
@@ -120,7 +133,8 @@ export default function App() {
                 <button type="button" onClick={() => setFilterOpen((open) => !open)} className={`control-button ${filterOpen || activeFilterCount ? 'control-button-active' : ''}`}>
                   <SlidersHorizontal className="h-4 w-4" /> Filters {activeFilterCount > 0 && <b>{activeFilterCount}</b>}
                 </button>
-                <button type="button" onClick={() => { setFilters(EMPTY_FILTERS); setSavedOnly(false); if (query) search(query, location, EMPTY_FILTERS) }} className="control-button">Reset</button>
+                <label className="sort-control"><span>Sort</span><select value={sort} onChange={(e) => changeSort(e.target.value as 'relevance' | 'newest')}><option value="relevance">Best match</option><option value="newest">Newest first</option></select></label>
+                <button type="button" onClick={() => { setFilters(EMPTY_FILTERS); setSavedOnly(false); setSort('relevance'); if (query) search(query, location, EMPTY_FILTERS, 'relevance') }} className="control-button">Reset</button>
               </div>
             </div>
 
@@ -145,6 +159,7 @@ export default function App() {
                 {!isLoading && error && <div className="state-card"><RefreshCw className="h-5 w-5" /><h3>Search needs another try.</h3><p>{error}</p><button type="button" onClick={() => search(query, location, filters)}>Try again</button></div>}
                 {!isLoading && !error && visibleJobs.length === 0 && <div className="state-card"><Search className="h-5 w-5" /><h3>Nothing matches this search.</h3><p>Try a broader role, remove a filter, or keep the location blank.</p><button type="button" onClick={() => { setFilters(EMPTY_FILTERS); setSavedOnly(false) }}>Clear filters</button></div>}
                 {!isLoading && !error && visibleJobs.length > 0 && visibleJobs.map((job, index) => <JobCard key={job.id} job={job} index={index} saved={saved.some((item) => item.id === job.id)} onToggleSave={toggleSave} onView={setSelectedJob} />)}
+                {!isLoading && !error && !savedOnly && hasMore && <div className="load-more"><button type="button" onClick={() => search(query, location, filters, sort, Math.floor(jobs.length / 40) + 1, true)}>Load more jobs <ChevronRight className="h-4 w-4" /></button><span>Showing {jobs.length} of {total}</span></div>}
               </div>
             </div>
           </section>

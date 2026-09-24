@@ -21,6 +21,7 @@ class Job(BaseModel):
     url: str
     source: str
     posted_date: Optional[str] = None
+    relevance_score: int = 0
 
 class JobSearchResponse(BaseModel):
     jobs: List[Job]

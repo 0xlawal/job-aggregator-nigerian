@@ -6,6 +6,7 @@ from app.config import settings
 from datetime import datetime, timedelta, timezone
 import asyncio
 import logging
+import re
 from typing import Dict, Tuple
 
 logger = logging.getLogger(__name__)
@@ -27,6 +28,28 @@ def posted_at(job: Job):
         return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
     except ValueError:
         return None
+
+
+def relevance_score(job: Job, query: str, location: str) -> int:
+    """Rank exact title/company matches above loose description matches."""
+    terms = [term for term in re.findall(r"[a-z0-9+#.-]+", query.lower()) if len(term) > 1]
+    title = job.title.lower()
+    company = job.company.lower()
+    description = (job.description or "").lower()
+    job_location = job.location.lower()
+    score = 0
+    for term in terms:
+        if term in title:
+            score += 45
+        if term in company:
+            score += 25
+        if term in description:
+            score += 8
+    if location and location.lower() in job_location:
+        score += 30
+    if is_remote(job) and (not location or location.lower() in {"remote", "anywhere", "worldwide"}):
+        score += 10
+    return min(score, 100)
 
 
 async def get_jobs(query: str, location: str) -> tuple[list[Job], bool]:
@@ -61,8 +84,12 @@ async def search_jobs(request: JobSearchRequest):
             hours = {"24h": 24, "7d": 168, "30d": 720}[request.posted_within]
             cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
             jobs = [job for job in jobs if (posted_at(job) or datetime.min.replace(tzinfo=timezone.utc)) >= cutoff]
+        for job in jobs:
+            job.relevance_score = relevance_score(job, request.query, request.location or "")
         if request.sort == "newest":
             jobs.sort(key=lambda job: posted_at(job) or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
+        else:
+            jobs.sort(key=lambda job: (job.relevance_score, posted_at(job) or datetime.min.replace(tzinfo=timezone.utc)), reverse=True)
 
         total = len(jobs)
         start = (request.page - 1) * request.page_size

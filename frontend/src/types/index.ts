@@ -8,6 +8,7 @@ export interface Job {
   url: string
   source: string
   posted_date?: string
+  relevance_score?: number
 }
 
 export type JobFilters = {
