@@ -189,6 +189,62 @@ async def fetch_from_himalayas(query: str) -> List[Dict]:
         logger.error(f"Himalayas fetch failed: {e}")
     return jobs
 
+
+async def fetch_from_adzuna(query: str, location: str = "") -> List[Dict]:
+    """Fetch Nigerian jobs from Adzuna's public API when credentials are configured."""
+    jobs = []
+    if not settings.ADZUNA_APP_ID or not settings.ADZUNA_APP_KEY:
+        logger.info("Adzuna credentials not configured. Skipping this source.")
+        return jobs
+
+    try:
+        # Adzuna's Nigeria feed is useful for local roles and complements the remote boards.
+        url = "https://api.adzuna.com/v1/api/jobs/ng/search/1"
+        params = {
+            "app_id": settings.ADZUNA_APP_ID,
+            "app_key": settings.ADZUNA_APP_KEY,
+            "results_per_page": 50,
+            "what": query,
+        }
+        if location.strip():
+            params["where"] = location.strip()
+
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            response = await client.get(url, params=params, headers=HEADERS)
+            response.raise_for_status()
+            data = response.json()
+
+        for item in data.get("results", []):
+            company = item.get("company") or {}
+            location_data = item.get("location") or {}
+            jobs.append({
+                "id": f"adz-{item.get('id', hash(item.get('redirect_url', '')) % 10000000)}",
+                "title": item.get("title", "No Title"),
+                "company": company.get("display_name", "Unknown"),
+                "location": location_data.get("display_name", location or "Nigeria"),
+                "description": item.get("description"),
+                "salary": _format_salary(item),
+                "url": item.get("redirect_url", ""),
+                "source": "Adzuna",
+                "posted_date": extract_posted_date(item),
+            })
+        logger.info(f"Adzuna: fetched {len(jobs)} jobs")
+    except Exception as e:
+        logger.error(f"Adzuna fetch failed: {e}")
+    return jobs
+
+
+def _format_salary(item: Dict) -> Optional[str]:
+    minimum = item.get("salary_min")
+    maximum = item.get("salary_max")
+    if minimum and maximum:
+        return f"₦{minimum:,.0f}–₦{maximum:,.0f}"
+    if minimum:
+        return f"From ₦{minimum:,.0f}"
+    if maximum:
+        return f"Up to ₦{maximum:,.0f}"
+    return None
+
 def filter_by_location(jobs: List[Dict], location: str) -> List[Dict]:
     """Filter jobs by location. Keeps remote jobs and matches location text."""
     if not location or not location.strip():
@@ -219,6 +275,7 @@ async def scrape_all(query: str, location: str = "") -> List[Dict]:
     import asyncio
     tasks = [
         fetch_hotnigerianjobs(query, location),
+        fetch_from_adzuna(query, location),
         fetch_from_arbeitnow(query),
         fetch_from_remotive(query),
         fetch_from_jobicy(query),
